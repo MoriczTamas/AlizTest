@@ -58,10 +58,13 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
         
         change_amount = 0.1
         iter_amount = 0
+        
+        #We're doing this here for efficiency
         probabilities = []
         for datapoint in data.data:
             probabilities.append(model.predict_proba(datapoint.reshape(1, -1))[0][1])
-            
+        
+        #A simple logarithmic algorithm that keeps the threshold going in the right direction with decreasing step sizes
         while iter_amount < max_iter:
             impurity = self.calculate_gini_impurity(data, probabilities)
             self.threshold += change_amount
@@ -73,6 +76,7 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
     
 class custom_estimator(BaseEstimator, TransformerMixin):
     """Handles data loading, logistic regression and binarizing the threshold"""
+    
     def __init__(self, thresholderClass, dataset = custom_data()):
         super().__init__()
         self.data = dataset
@@ -80,19 +84,27 @@ class custom_estimator(BaseEstimator, TransformerMixin):
         self.model = LogisticRegression(random_state=0, solver='liblinear')
         
     def fit(self, max_iter = 20):
+        """Handles data fitting and threshold optimisation, max_iter is handed to the threshold optimiser"""
+        
         regression_result = self.model.fit(self.data.data, self.data.target)
         self.thresholdBinarizer.optimise_threshold(self.data, regression_result, max_iter)
         return True
 
     def predict(self, data):
+        """Runs inference on the classifier for a single data point"""
+        
         return self.thresholdBinarizer.binarize(self.model.predict_proba(data)[0][1])
     
     def load_data(self, filename):
+        """Loads a binary classification dataset from a csv file with no headers"""
+        
         pre_data = pandas.read_csv(filename).values
         self.data.data = pre_data[:, :pre_data.shape[1]-1]
         self.data.target = pre_data[:, pre_data.shape[1]-1]
         
     def get_accuracy(self):
+        """Calculates the accuracy score of the classifier, different from the model's own accuracy"""
+        
         total = 0
         correct = 0
         for index in range(0, self.data.data.shape[0]):
