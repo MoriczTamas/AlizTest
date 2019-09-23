@@ -8,7 +8,7 @@ A very simple solution for such a multi-class classification problem is to use n
 
 The simplest evaluation metric is accuracy, which is merely the amount of correct inferences divided by the total amount of inferences, but it is a metric that can lead to very poor performances on certain datasets. Instead, we could use categorical crossentropy here, which is a metric designed for problems precisely such as this one, since it penalizes giving high probability values to non-booked items.
 
-#Question 1.2
+# Question 1.2
 We know that the popularity of the products are varying. E.g. purchase rate for priority boarding is 20 % while for food is 2 %. How would this influence the recommendations? Do we need to handle it somehow?
 
 # Answer
