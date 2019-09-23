@@ -4,6 +4,11 @@ from sklearn.linear_model import LogisticRegression
 import pandas
 
 
+class custom_data():
+    def __init__(self):
+        self.target = []
+        self.data = []
+
 class ThresholdBinarizer(BaseEstimator, TransformerMixin):
     """Optimises the threshold according to the Gini impurity"""
     def __init__(self, starting_threshold = 0.5):
@@ -15,24 +20,23 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
             return 1
         return 0
         
-    def calculate_gini_impurity(self, data, model):
+    def calculate_gini_impurity(self, data, probabilities):
         class_0_correct = 0
         class_1_incorrect = 0
         class_0_incorrect = 0
         class_1_correct = 0
-        for datapoint in data.data:
-            for label in data.target:
-                prediction = self.binarize(model.predict_proba(datapoint.reshape(1, -1))[0][1])
-                if prediction == 1:
-                    if label == 1:
-                        class_1_correct += 1
-                    else:
-                        class_1_incorrect += 1
-                elif label == 1:
-                    class_0_incorrect += 1
+        for index in range(0, len(probabilities)):
+            prediction = self.binarize(probabilities[index])
+            if prediction == 1:
+                if data.target[index] == 1:
+                    class_1_correct += 1
                 else:
-                    class_0_correct += 1
-                    
+                    class_1_incorrect += 1
+            elif data.target[index] == 1:
+                class_0_incorrect += 1
+            else:
+                class_0_correct += 1
+
         label_0_probability = class_0_correct / (class_0_correct + class_1_incorrect)
         label_1_probability = class_1_correct / (class_1_correct + class_0_incorrect)
         gini_impurity_0 = label_0_probability * (1-label_0_probability) * label_0_probability * (1-label_0_probability)
@@ -46,11 +50,14 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
     def optimise_threshold(self, data, model, max_iter = 20):
         change_amount = 0.1
         iter_amount = 0
+        probabilities = []
+        for datapoint in data.data:
+            probabilities.append(model.predict_proba(datapoint.reshape(1, -1))[0][1])
         while iter_amount < max_iter:
-            impurity = self.calculate_gini_impurity(data, model)
+            impurity = self.calculate_gini_impurity(data, probabilities)
             self.threshold += change_amount
-            impurity_changed = self.calculate_gini_impurity(data, model)
-            if impurity > impurity_changed:
+            impurity_changed = self.calculate_gini_impurity(data, probabilities)
+            if impurity < impurity_changed:
                 self.threshold -= 2 * change_amount
                 change_amount = change_amount / -2
             iter_amount += 1
@@ -63,7 +70,7 @@ class custom_estimator(BaseEstimator, TransformerMixin):
         self.thresholdBinarizer = thresholderClass
         self.model = LogisticRegression(random_state=0, solver='liblinear')
         
-    def fit(self, max_iter = 5):
+    def fit(self, max_iter = 20):
         regression_result = self.model.fit(self.data.data, self.data.target)
         self.thresholdBinarizer.optimise_threshold(data, regression_result, max_iter)
         return True
@@ -80,7 +87,9 @@ class custom_estimator(BaseEstimator, TransformerMixin):
         return self.thresholdBinarizer.binarize(self.model.predict_proba(data)[0][1])
     
     def load_data(self, filename):
-        self.data = pandas.read_csv(filename)
+        pre_data = pandas.read_csv(filename).to_numpy()
+        self.data.data = pre_data[:, :pre_data.shape[1]-1]
+        self.data.target = pre_data[:, pre_data.shape[1]]
         
     def load_prebuilt_data(self):
         self.data = load_breast_cancer()
@@ -88,19 +97,17 @@ class custom_estimator(BaseEstimator, TransformerMixin):
     def get_accuracy(self):
         total = 0
         correct = 0
-        for datapoint in self.data.data:
-            for label in self.data.target:
-                prediction = self.thresholdBinarizer.binarize(self.model.predict_proba(datapoint.reshape(1, -1))[0][1])
-                if prediction == label:
-                    correct += 1
-                total += 1
+        for index in range(0, self.data.data.shape[0]):
+            prediction = self.predict(self.data.data[index].reshape(1, -1))
+            if prediction == self.data.target[index]:
+                correct += 1
+            total += 1
         return correct / total
         
     
-data = load_breast_cancer()
+
 binarizer = ThresholdBinarizer()
 estimator = custom_estimator(binarizer)
 estimator.load_prebuilt_data()
 estimator.fit()
-datapoint = 0
 print(estimator.get_accuracy())
