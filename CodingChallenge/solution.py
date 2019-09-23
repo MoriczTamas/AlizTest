@@ -11,20 +11,26 @@ class custom_data():
 
 class ThresholdBinarizer(BaseEstimator, TransformerMixin):
     """Optimises the threshold according to the Gini impurity"""
+    
     def __init__(self, starting_threshold = 0.5):
         super().__init__()
         self.threshold = starting_threshold
         
     def binarize(self, prediction):
+        """Uses the calculated threshold to turn a probability into a class label prediction"""
+        
         if prediction >= self.threshold:
             return 1
         return 0
         
     def calculate_gini_impurity(self, data, probabilities):
+        """Takes the calculated class probabilities and true class labels and calculated the Gini impurity"""
+        
         class_0_correct = 0
         class_1_incorrect = 0
         class_0_incorrect = 0
         class_1_correct = 0
+        
         for index in range(0, len(probabilities)):
             prediction = self.binarize(probabilities[index])
             if prediction == 1:
@@ -48,11 +54,14 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
         return gini_impurity_total
         
     def optimise_threshold(self, data, model, max_iter = 20):
+        """Uses a simple logarithmic algorithm to optimise the binary classification threshold"""
+        
         change_amount = 0.1
         iter_amount = 0
         probabilities = []
         for datapoint in data.data:
             probabilities.append(model.predict_proba(datapoint.reshape(1, -1))[0][1])
+            
         while iter_amount < max_iter:
             impurity = self.calculate_gini_impurity(data, probabilities)
             self.threshold += change_amount
@@ -64,7 +73,7 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
     
 class custom_estimator(BaseEstimator, TransformerMixin):
     """Handles data loading, logistic regression and binarizing the threshold"""
-    def __init__(self, thresholderClass, dataset = None):
+    def __init__(self, thresholderClass, dataset = custom_data()):
         super().__init__()
         self.data = dataset
         self.thresholdBinarizer = thresholderClass
@@ -72,27 +81,16 @@ class custom_estimator(BaseEstimator, TransformerMixin):
         
     def fit(self, max_iter = 20):
         regression_result = self.model.fit(self.data.data, self.data.target)
-        self.thresholdBinarizer.optimise_threshold(data, regression_result, max_iter)
+        self.thresholdBinarizer.optimise_threshold(self.data, regression_result, max_iter)
         return True
 
-   # def fit(self, x, y=None):
-    #    return self
-
-    #def transform(self, posts):
-     #   return [{'length': len(text),
-      #           'num_sentences': text.count('.')}
-       #         for text in posts]
-    
     def predict(self, data):
         return self.thresholdBinarizer.binarize(self.model.predict_proba(data)[0][1])
     
     def load_data(self, filename):
-        pre_data = pandas.read_csv(filename).to_numpy()
+        pre_data = pandas.read_csv(filename).values
         self.data.data = pre_data[:, :pre_data.shape[1]-1]
-        self.data.target = pre_data[:, pre_data.shape[1]]
-        
-    def load_prebuilt_data(self):
-        self.data = load_breast_cancer()
+        self.data.target = pre_data[:, pre_data.shape[1]-1]
         
     def get_accuracy(self):
         total = 0
@@ -108,6 +106,6 @@ class custom_estimator(BaseEstimator, TransformerMixin):
 
 binarizer = ThresholdBinarizer()
 estimator = custom_estimator(binarizer)
-estimator.load_prebuilt_data()
+estimator.load_data("breast_cancer.csv")
 estimator.fit()
 print(estimator.get_accuracy())
