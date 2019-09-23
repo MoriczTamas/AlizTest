@@ -22,7 +22,7 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
         class_1_correct = 0
         for datapoint in data.data:
             for label in data.target:
-                prediction = self.binarize(model.predict(datapoint.reshape(1, -1)))
+                prediction = self.binarize(model.predict_proba(datapoint.reshape(1, -1))[0][1])
                 if prediction == 1:
                     if label == 1:
                         class_1_correct += 1
@@ -53,6 +53,7 @@ class ThresholdBinarizer(BaseEstimator, TransformerMixin):
             if impurity > impurity_changed:
                 self.threshold -= 2 * change_amount
                 change_amount = change_amount / -2
+            iter_amount += 1
     
 class custom_estimator(BaseEstimator, TransformerMixin):
     """Handles data loading, logistic regression and binarizing the threshold"""
@@ -62,8 +63,8 @@ class custom_estimator(BaseEstimator, TransformerMixin):
         self.thresholdBinarizer = thresholderClass
         self.model = LogisticRegression(random_state=0, solver='liblinear')
         
-    def fit(self, max_iter = 20):
-        regression_result = self.model.fit(data.data, data.target)
+    def fit(self, max_iter = 5):
+        regression_result = self.model.fit(self.data.data, self.data.target)
         self.thresholdBinarizer.optimise_threshold(data, regression_result, max_iter)
         return True
 
@@ -76,13 +77,24 @@ class custom_estimator(BaseEstimator, TransformerMixin):
        #         for text in posts]
     
     def predict(self, data):
-        return thresholdBinarizer.binarize(model.predict(data))
+        return self.thresholdBinarizer.binarize(self.model.predict_proba(data)[0][1])
     
     def load_data(self, filename):
-        data = pandas.read_csv(filename)
+        self.data = pandas.read_csv(filename)
         
     def load_prebuilt_data(self):
-        data = load_breast_cancer()
+        self.data = load_breast_cancer()
+        
+    def get_accuracy(self):
+        total = 0
+        correct = 0
+        for datapoint in self.data.data:
+            for label in self.data.target:
+                prediction = self.thresholdBinarizer.binarize(self.model.predict_proba(datapoint.reshape(1, -1))[0][1])
+                if prediction == label:
+                    correct += 1
+                total += 1
+        return correct / total
         
     
 data = load_breast_cancer()
@@ -91,5 +103,4 @@ estimator = custom_estimator(binarizer)
 estimator.load_prebuilt_data()
 estimator.fit()
 datapoint = 0
-print(estimator.predict(data.data[0]))
-print(data.target[0])
+print(estimator.get_accuracy())
