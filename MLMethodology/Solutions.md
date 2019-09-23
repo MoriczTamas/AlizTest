@@ -12,3 +12,17 @@ Fill in the empty confusion matrix below with a possible concrete outcome if the
 |           |         | Bad    | Not bad |   |
 | Predicted | Bad     | 0      | 0       |   |
 |           | Not bad | 10     | 99 990  |   |
+
+
+# Question 2.2
+On a logistic regression model with binary outcome in {0,1} that is optimized with stochastic gradient descent you have to tune hyperparameters
+●	learning rate
+●	L2 regularization
+●	batch size
+●	threshold value: the predicted probability above which we assign 1
+
+Choose 3  metrics that you can use to compare the trained model and decide which one is the best for this use case. Explain why.
+
+# Answer
+I would use accuracy with the final results, and the F1 score and log loss on the model’s direct output. The log loss will allow me to fine-tune the threshold value, since from two models with the same accuracy but a different log loss, the one with the higher threshold value is more likely to be good, assuming no other factors at play. The F1 score is good for tuning L2 regularization’s lambda parameter and batch size. Meanwhile, accuracy is a good, overall judge of a model’s performance.
+
